@@ -7,11 +7,9 @@ require (
 	github.com/gin-gonic/gin v1.10.0
 	github.com/google/uuid v1.6.0
 	github.com/prometheus/client_golang v1.22.0
-	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/samber/slog-common v0.17.0
 	github.com/samber/slog-graylog/v2 v2.7.0
 	github.com/samber/slog-multi v1.2.1
-	github.com/isklv/rabbitmq v1.3.2
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 	google.golang.org/grpc v1.66.2
 )
