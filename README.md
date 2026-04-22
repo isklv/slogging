@@ -36,6 +36,28 @@ go env -w GONOPROXY=github.com/isklv/*
 go get github.com/isklv/slogging@v1.0.7
 ```
 
+## Graceful Degradation (Empty/Invalid Graylog URLs) ##
+
+**Важно:** При пустом или невалидном Graylog URL библиотека **не упадет с паникой**. Вместо этого:
+- Будет выведен warning в stderr
+- Приложения продолжит работать без Graylog интеграции
+- Логи будут идти только в stdout/stderr
+
+```go
+// Пустой URL — безопасно, просто не будет Graylog
+opts := slogging.NewOptions().InGraylog("", "app_name")
+
+// Невалидный URL — безопасно, будет warning в stderr
+opts := slogging.NewOptions().InGraylog("invalid-url", "app_name")
+
+// Корректный URL — работает Graylog
+opts := slogging.NewOptions().InGraylog("localhost:12201", "app_name")
+```
+```bash
+go env -w GONOPROXY=github.com/isklv/*
+go get github.com/isklv/slogging@v1.0.7
+```
+
 ## Initialization ##
 ```bash
 opts := slogging.NewOptions().InGraylog("localhost:12201", "application_name")
