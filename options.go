@@ -26,9 +26,16 @@ func (c *LoggerOptions) WithSource(with bool) *LoggerOptions {
 }
 
 func (c *LoggerOptions) InGraylog(graylogURL, containerName string) *LoggerOptions {
+	if graylogURL == "" {
+		// Если URL пустой, просто не включаем graylog
+		return c
+	}
+
 	w, err := gelf.NewWriter(graylogURL)
 	if err != nil {
-		log.Fatal(err)
+		// Логгируем ошибку в stderr, но не паникуем
+		log.Printf("slogging: failed to connect to graylog %s: %v", graylogURL, err)
+		return c
 	}
 
 	c.inGraylog = &gelfData{
