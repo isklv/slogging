@@ -1,19 +1,19 @@
 package chi
 
 import (
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestTraceMiddleware(t *testing.T) {
 	t.Run("adds trace ID when not present", func(t *testing.T) {
 		r := chi.NewRouter()
-		r.Use(TraceMiddleware(nil)) // nil logger is fine for middleware test
+		r.Use(TraceMiddleware(slog.Default())) // nil logger is fine for middleware test
 
 		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
 			// Check that trace ID is in context
@@ -30,7 +30,7 @@ func TestTraceMiddleware(t *testing.T) {
 
 	t.Run("preserves existing trace ID from header", func(t *testing.T) {
 		r := chi.NewRouter()
-		r.Use(TraceMiddleware(nil))
+		r.Use(TraceMiddleware(slog.Default()))
 
 		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
@@ -47,7 +47,7 @@ func TestTraceMiddleware(t *testing.T) {
 
 	t.Run("handles multiple requests concurrently", func(t *testing.T) {
 		r := chi.NewRouter()
-		r.Use(TraceMiddleware(nil))
+		r.Use(TraceMiddleware(slog.Default()))
 
 		var done chan struct{} = make(chan struct{}, 10)
 
@@ -69,7 +69,7 @@ func TestTraceMiddleware(t *testing.T) {
 
 	t.Run("middleware chain works", func(t *testing.T) {
 		r := chi.NewRouter()
-		r.Use(TraceMiddleware(nil))
+		r.Use(TraceMiddleware(slog.Default()))
 		r.Use(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				next.ServeHTTP(w, r)
@@ -97,15 +97,13 @@ func TestTraceMiddleware_WithLogger(t *testing.T) {
 	})
 }
 
-func TestTraceMiddleware-Headers(t *testing.T) {
+func TestTraceMiddleware_Headers(t *testing.T) {
 	t.Run("reads X-B3-TraceId header", func(t *testing.T) {
 		r := chi.NewRouter()
-		r.Use(TraceMiddleware(nil))
+		r.Use(TraceMiddleware(slog.Default()))
 
-		var foundTraceID string
 		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
 			// In real implementation, we'd check context
-			foundTraceID = r.Header.Get("X-B3-TraceId")
 			w.WriteHeader(http.StatusOK)
 		})
 
@@ -123,7 +121,7 @@ func TestTraceMiddleware-Headers(t *testing.T) {
 func TestTraceMiddleware_PathPatterns(t *testing.T) {
 	t.Run("works with path parameters", func(t *testing.T) {
 		r := chi.NewRouter()
-		r.Use(TraceMiddleware(nil))
+		r.Use(TraceMiddleware(slog.Default()))
 
 		r.Get("/users/{id}", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
@@ -139,9 +137,13 @@ func TestTraceMiddleware_PathPatterns(t *testing.T) {
 
 	t.Run("works with path prefix", func(t *testing.T) {
 		r := chi.NewRouter()
-		r.Use(TraceMiddleware(nil))
+		r.Use(TraceMiddleware(slog.Default()))
 
-		r.Mount("/api", chi.NewRouter())
+		api := chi.NewRouter()
+		api.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
+		r.Mount("/api", api)
 
 		req := httptest.NewRequest("GET", "/api/test", nil)
 		w := httptest.NewRecorder()
@@ -154,7 +156,7 @@ func TestTraceMiddleware_PathPatterns(t *testing.T) {
 
 func BenchmarkTraceMiddleware(b *testing.B) {
 	r := chi.NewRouter()
-	r.Use(TraceMiddleware(nil))
+	r.Use(TraceMiddleware(slog.Default()))
 	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})

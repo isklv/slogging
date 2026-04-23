@@ -1,6 +1,7 @@
 package gin
 
 import (
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,7 +15,7 @@ func TestTraceMiddleware(t *testing.T) {
 
 	t.Run("adds trace ID when not present", func(t *testing.T) {
 		r := gin.New()
-		r.Use(TraceMiddleware(nil))
+		r.Use(TraceMiddleware(slog.Default()))
 
 		r.GET("/test", func(c *gin.Context) {
 			c.String(http.StatusOK, "ok")
@@ -31,7 +32,7 @@ func TestTraceMiddleware(t *testing.T) {
 
 	t.Run("preserves existing trace ID", func(t *testing.T) {
 		r := gin.New()
-		r.Use(TraceMiddleware(nil))
+		r.Use(TraceMiddleware(slog.Default()))
 
 		r.GET("/test", func(c *gin.Context) {
 			traceID := c.Request.Header.Get("X-B3-TraceId")
@@ -50,7 +51,7 @@ func TestTraceMiddleware(t *testing.T) {
 
 	t.Run("handles concurrent requests", func(t *testing.T) {
 		r := gin.New()
-		r.Use(TraceMiddleware(nil))
+		r.Use(TraceMiddleware(slog.Default()))
 
 		done := make(chan bool, 10)
 
@@ -75,7 +76,7 @@ func TestTraceMiddleware(t *testing.T) {
 	t.Run("works with groups", func(t *testing.T) {
 		r := gin.New()
 		api := r.Group("/api")
-		api.Use(TraceMiddleware(nil))
+		api.Use(TraceMiddleware(slog.Default()))
 
 		api.GET("/users", func(c *gin.Context) {
 			c.String(http.StatusOK, "users")
@@ -91,7 +92,7 @@ func TestTraceMiddleware(t *testing.T) {
 
 	t.Run("middleware chain", func(t *testing.T) {
 		r := gin.New()
-		r.Use(TraceMiddleware(nil))
+		r.Use(TraceMiddleware(slog.Default()))
 		r.Use(func(c *gin.Context) {
 			c.Next()
 		})
@@ -112,7 +113,7 @@ func TestTraceMiddleware(t *testing.T) {
 func TestTraceMiddleware_Headers(t *testing.T) {
 	t.Run("passes headers through", func(t *testing.T) {
 		r := gin.New()
-		r.Use(TraceMiddleware(nil))
+		r.Use(TraceMiddleware(slog.Default()))
 
 		r.GET("/test", func(c *gin.Context) {
 			contentType := c.Request.Header.Get("Content-Type")
@@ -132,7 +133,7 @@ func TestTraceMiddleware_Headers(t *testing.T) {
 
 func BenchmarkTraceMiddleware(b *testing.B) {
 	r := gin.New()
-	r.Use(TraceMiddleware(nil))
+	r.Use(TraceMiddleware(slog.Default()))
 	r.GET("/test", func(c *gin.Context) {
 		c.String(http.StatusOK, "ok")
 	})

@@ -1,6 +1,7 @@
 package mux
 
 import (
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,7 +13,7 @@ import (
 func TestTraceMiddleware(t *testing.T) {
 	t.Run("adds trace ID when not present", func(t *testing.T) {
 		r := mux.NewRouter()
-		r.Use(TraceMiddleware(nil))
+		r.Use(TraceMiddleware(slog.Default()))
 
 		r.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
@@ -30,7 +31,7 @@ func TestTraceMiddleware(t *testing.T) {
 
 	t.Run("preserves existing trace ID", func(t *testing.T) {
 		r := mux.NewRouter()
-		r.Use(TraceMiddleware(nil))
+		r.Use(TraceMiddleware(slog.Default()))
 
 		var capturedTraceID string
 		r.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
@@ -51,7 +52,7 @@ func TestTraceMiddleware(t *testing.T) {
 	t.Run("works with subrouters", func(t *testing.T) {
 		r := mux.NewRouter()
 		api := r.PathPrefix("/api").Subrouter()
-		api.Use(TraceMiddleware(nil))
+		api.Use(TraceMiddleware(slog.Default()))
 
 		api.HandleFunc("/users", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
@@ -67,7 +68,7 @@ func TestTraceMiddleware(t *testing.T) {
 
 	t.Run("works with path variables", func(t *testing.T) {
 		r := mux.NewRouter()
-		r.Use(TraceMiddleware(nil))
+		r.Use(TraceMiddleware(slog.Default()))
 
 		r.HandleFunc("/users/{id}", func(w http.ResponseWriter, r *http.Request) {
 			vars := mux.Vars(r)
@@ -86,7 +87,7 @@ func TestTraceMiddleware(t *testing.T) {
 
 	t.Run("concurrent safety", func(t *testing.T) {
 		r := mux.NewRouter()
-		r.Use(TraceMiddleware(nil))
+		r.Use(TraceMiddleware(slog.Default()))
 
 		done := make(chan bool, 10)
 
@@ -110,7 +111,7 @@ func TestTraceMiddleware(t *testing.T) {
 
 	t.Run("middleware chain", func(t *testing.T) {
 		r := mux.NewRouter()
-		r.Use(TraceMiddleware(nil))
+		r.Use(TraceMiddleware(slog.Default()))
 		r.Use(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				next.ServeHTTP(w, r)
@@ -133,7 +134,7 @@ func TestTraceMiddleware(t *testing.T) {
 func TestTraceMiddleware_Methods(t *testing.T) {
 	t.Run("GET request", func(t *testing.T) {
 		r := mux.NewRouter()
-		r.Use(TraceMiddleware(nil))
+		r.Use(TraceMiddleware(slog.Default()))
 		r.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		}).Methods("GET")
@@ -146,7 +147,7 @@ func TestTraceMiddleware_Methods(t *testing.T) {
 
 	t.Run("POST request", func(t *testing.T) {
 		r := mux.NewRouter()
-		r.Use(TraceMiddleware(nil))
+		r.Use(TraceMiddleware(slog.Default()))
 		r.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusCreated)
 		}).Methods("POST")
@@ -159,7 +160,7 @@ func TestTraceMiddleware_Methods(t *testing.T) {
 
 	t.Run("DELETE request", func(t *testing.T) {
 		r := mux.NewRouter()
-		r.Use(TraceMiddleware(nil))
+		r.Use(TraceMiddleware(slog.Default()))
 		r.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 		}).Methods("DELETE")
@@ -173,7 +174,7 @@ func TestTraceMiddleware_Methods(t *testing.T) {
 
 func BenchmarkTraceMiddleware(b *testing.B) {
 	r := mux.NewRouter()
-	r.Use(TraceMiddleware(nil))
+	r.Use(TraceMiddleware(slog.Default()))
 	r.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})

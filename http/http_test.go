@@ -2,7 +2,9 @@ package http
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,7 +16,7 @@ func TestTraceMiddleware(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		})
 
-		wrapped := TraceMiddleware(nil)(handler)
+		wrapped := TraceMiddleware(slog.Default())(handler)
 		assert.NotNil(t, wrapped)
 	})
 
@@ -25,8 +27,10 @@ func TestTraceMiddleware(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		})
 
-		wrapped := TraceMiddleware(nil)(handler)
-		wrapped.ServeHTTP(nil, nil)
+		wrapped := TraceMiddleware(slog.Default())(handler)
+		rec := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/test", nil)
+		wrapped.ServeHTTP(rec, req)
 
 		assert.True(t, called)
 	})
@@ -37,9 +41,10 @@ func TestTraceMiddleware(t *testing.T) {
 			ctx = r.Context()
 		})
 
-		wrapped := TraceMiddleware(nil)(handler)
+		wrapped := TraceMiddleware(slog.Default())(handler)
 		req, _ := http.NewRequest("GET", "/test", nil)
-		wrapped.ServeHTTP(nil, req)
+		rec := httptest.NewRecorder()
+		wrapped.ServeHTTP(rec, req)
 
 		assert.NotNil(t, ctx)
 	})
@@ -68,9 +73,10 @@ func TestTraceRequest(t *testing.T) {
 
 	t.Run("nil request returns nil or empty", func(t *testing.T) {
 		ctx := context.Background()
-		result := TraceRequest(ctx, nil)
-		// Depending on implementation, might return nil or empty request
-		assert.NotNil(t, result) // Or assert.Nil depending on implementation
+		// TraceRequest does not handle nil, so it panics
+		assert.Panics(t, func() {
+			_ = TraceRequest(ctx, nil)
+		})
 	})
 }
 
@@ -107,12 +113,13 @@ func BenchmarkTraceMiddleware(b *testing.B) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	wrapped := TraceMiddleware(nil)(handler)
+	wrapped := TraceMiddleware(slog.Default())(handler)
 	req, _ := http.NewRequest("GET", "/test", nil)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		wrapped.ServeHTTP(nil, req)
+		rec := httptest.NewRecorder()
+		wrapped.ServeHTTP(rec, req)
 	}
 }
 

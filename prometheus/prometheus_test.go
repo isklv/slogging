@@ -1,8 +1,10 @@
 package prometheus
 
 import (
+	"context"
 	"testing"
 
+	"github.com/isklv/slogging"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -13,10 +15,12 @@ func TestTraceExemplar(t *testing.T) {
 	})
 
 	t.Run("function signature", func(t *testing.T) {
-		// TraceExemplar should return a function that takes traceID and returns exemplar
+		// TraceExemplar should return a function that takes context and returns exemplar
 		fn := TraceExemplar
-		result := fn("test-trace-id")
-		assert.NotNil(t, result)
+		ctx := context.Background()
+		result := fn(ctx)
+		// Returns nil when no trace ID in context
+		assert.Nil(t, result)
 	})
 }
 
@@ -45,9 +49,17 @@ func TestTraceExemplar_TraceIDFormats(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.WithValue(context.Background(), slogging.XB3TraceID, tt.traceID)
 			fn := TraceExemplar
-			result := fn(tt.traceID)
-			assert.NotNil(t, result)
+			result := fn(ctx)
+			if tt.traceID == "" {
+				assert.Nil(t, result)
+			} else {
+				assert.NotNil(t, result)
+				if result != nil {
+					assert.Equal(t, tt.expected, result[slogging.XB3TraceID])
+				}
+			}
 		})
 	}
 }
@@ -57,15 +69,16 @@ func TestTraceExemplar_NilSafety(t *testing.T) {
 		// The function should handle cases where trace ID is not available
 		fn := TraceExemplar
 		assert.NotPanics(t, func() {
-			_ = fn("test")
+			_ = fn(context.Background())
 		})
 	})
 }
 
 func BenchmarkTraceExemplar(b *testing.B) {
 	fn := TraceExemplar
+	ctx := context.WithValue(context.Background(), slogging.XB3TraceID, "test-trace-id")
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = fn("test-trace-id")
+		_ = fn(ctx)
 	}
 }

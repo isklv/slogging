@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  graylog:
+    image: graylog/graylog:5.0
+    container_name: graylog-test
+    environment:
+      - GRAYLOG_HTTP_BIND_ADDRESS=0.0.0.0:9000
+      - GRAYLOG_HTTP_EXTERNAL_URI=http://127.0.0.1:9000/
+      - GRAYLOG_PASSWORD_SECRET=some-password-secret
+      - GRAYLOG_ROOT_PASSWORD_SHA2=6c8349fd7be6809a1c08fac695e60b6cc6b4dd1009e30c468c6fc40452e2fc18
+      - GRAYLOG_JAVA_OPTS=-Xms256m -Xmx256m
+      - GRAYLOG_METRICS_ENABLED=false
+    ports:
+      - "9000:9000"   # HTTP API
+      - "12201:12201/udp"  # GELF UDP
+      - "1514:1514/udp"    # Syslog UDP
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    networks:
+      - slogging-test
+
+networks:
+  slogging-test:
+    driver: bridge
