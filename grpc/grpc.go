@@ -8,6 +8,7 @@ import (
 	"log/slog"
 )
 
+// TraceInterceptor creates a gRPC unary server interceptor that adds trace ID to context.
 func TraceInterceptor(l *slog.Logger) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		md, ok := metadata.FromIncomingContext(ctx)
@@ -33,6 +34,7 @@ func TraceInterceptor(l *slog.Logger) grpc.UnaryServerInterceptor {
 	}
 }
 
+// TraceMetadata adds trace ID to outgoing gRPC metadata context.
 func TraceMetadata(ctx context.Context) context.Context {
 	traceID, ok := ctx.Value(slogging.XB3TraceID).(string)
 	if !ok || traceID == "" {

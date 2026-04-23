@@ -10,28 +10,32 @@ import (
 	slogcommon "github.com/samber/slog-common"
 )
 
+// Converter converts slog record to Graylog extra fields.
 type Converter func(addSource bool, replaceAttr func(groups []string, a slog.Attr) slog.Attr, loggerAttr []slog.Attr, groups []string, record *slog.Record) (extra map[string]any)
 
+// Option configures Graylog handler.
 type Option struct {
-	// log level (default: debug)
+	// Level sets the minimum log level (default: debug).
 	Level slog.Leveler
 
-	// connection to graylog
+	// Writer is the Graylog GELF writer connection.
 	Writer *gelf.Writer
 
-	// optional: customize json payload builder
+	// Converter customizes JSON payload builder.
 	Converter Converter
-	// optional: fetch attributes from context
+	// AttrFromContext extracts additional attributes from context.
 	AttrFromContext []func(ctx context.Context) []slog.Attr
 
-	// optional: see slog.HandlerOptions
-	AddSource   bool
+	// AddSource includes source code location in logs (see slog.HandlerOptions).
+	AddSource bool
+	// ReplaceAttr transforms attributes before logging.
 	ReplaceAttr func(groups []string, a slog.Attr) slog.Attr
 
-	// internal
+	// hostname is internal, auto-detected.
 	hostname string
 }
 
+// NewGraylogHandler creates a new Graylog GELF handler.
 func (o Option) NewGraylogHandler() slog.Handler {
 	if o.Level == nil {
 		o.Level = LevelDebug
@@ -54,6 +58,7 @@ func (o Option) NewGraylogHandler() slog.Handler {
 
 var _ slog.Handler = (*GraylogHandler)(nil)
 
+// GraylogHandler implements slog.Handler for Graylog GELF output.
 type GraylogHandler struct {
 	option Option
 	attrs  []slog.Attr
@@ -78,10 +83,12 @@ func (h *GraylogHandler) Handle(ctx context.Context, record slog.Record) error {
 		Extra:    extra,
 	}
 
-	// non-blocking
-	go func() {
-		_ = h.option.Writer.WriteMessage(msg)
-	}()
+	// non-blocking with nil check
+	if h.option.Writer != nil {
+		go func() {
+			_ = h.option.Writer.WriteMessage(msg)
+		}()
+	}
 
 	return nil
 }
@@ -115,10 +122,12 @@ func short(record *slog.Record) string {
 	return msg
 }
 
+// XB3TraceID is the context key for B3 trace ID.
 const (
 	XB3TraceID = "X-B3-TraceId"
 )
 
+// LogLevels maps slog levels to Graylog GELF levels.
 var LogLevels = map[slog.Level]int32{
 	slog.LevelDebug: 7,
 	slog.LevelInfo:  6,

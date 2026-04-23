@@ -7,6 +7,7 @@ import (
 	"net/http"
 )
 
+// TraceRequest adds trace ID to request headers, generating one if missing.
 func TraceRequest(ctx context.Context, req *http.Request) *http.Request {
 	traceID, ok := ctx.Value(slogging.XB3TraceID).(string)
 	if !ok || traceID == "" {
@@ -17,6 +18,7 @@ func TraceRequest(ctx context.Context, req *http.Request) *http.Request {
 	return req
 }
 
+// TraceMiddleware creates HTTP middleware that adds trace ID to requests and logs.
 func TraceMiddleware(l *slog.Logger) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
