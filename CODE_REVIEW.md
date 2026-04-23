@@ -13,24 +13,15 @@ Comprehensive review of the `github.com/isklv/slogging` library focusing on:
 
 ## Critical Issues 🔴
 
-### 1. Error Handling in `InGraylog()` (Fixed)
+### 1. Error Handling in `InGraylog()` ✅ (Fixed)
 **File:** `options.go:InGraylog()`
-**Severity:** Critical
+**Severity:** Critical → **Resolved**
 
 **Issue:** `log.Fatal(err)` on invalid Graylog URL crashes entire application.
 
-**Current:**
-```go
-func (c *LoggerOptions) InGraylog(graylogURL, containerName string) *LoggerOptions {
-    w, err := gelf.NewWriter(graylogURL)
-    if err != nil {
-        log.Fatal(err)  // ❌ Crashes app
-    }
-    // ...
-}
-```
+**Status:** **FIXED** — now checks for empty URL, logs error to stderr, returns gracefully without crashing.
 
-**Fixed:**
+**Current (Fixed):**
 ```go
 func (c *LoggerOptions) InGraylog(graylogURL, containerName string) *LoggerOptions {
     if graylogURL == "" {
@@ -38,39 +29,40 @@ func (c *LoggerOptions) InGraylog(graylogURL, containerName string) *LoggerOptio
     }
     w, err := gelf.NewWriter(graylogURL)
     if err != nil {
-        log.Printf("[slogging] Failed to connect to Graylog %s: %v", graylogURL, err)
+        log.Printf("slogging: failed to connect to graylog %s: %v", graylogURL, err)
         return c  // Continue without Graylog
     }
     // ...
 }
 ```
 
-### 2. Missing Nil Checks
+### 2. Missing Nil Checks ✅ (Fixed)
 **File:** `logger.go`, `graylog.go`
-**Severity:** Medium
+**Severity:** Medium → **Resolved**
 
-**Issue:** No nil checks on `opts.inGraylog` before use.
+**Status:** **FIXED** — nil checks added in `options.go` (empty URL check) and `logger.go` (handler checks).
 
-**Recommendation:**
-```go
-if opts.inGraylog != nil && opts.inGraylog.w != nil {
-    // Safe to write
-}
-```
-
-### 3. Panic on Empty Context
+### 3. Panic on Empty Context ✅ (Fixed)
 **File:** `context.go`, `alias.go`
-**Severity:** Medium
+**Severity:** Medium → **Resolved**
 
-**Issue:** `L(ctx)` might panic if context has no logger and no default set.
+**Status:** **FIXED** — `L(ctx)` now returns `&SLogger{slog.Default()}` as fallback.
 
-**Recommendation:** Add fallback:
+**Current:**
 ```go
-func L(ctx context.Context) *slog.Logger {
-    if logger, ok := ctx.Value(loggerContextKey).(*slog.Logger); ok {
-        return logger
+func L(ctx context.Context) *SLogger {
+    if l, ok := ctx.Value(ctxLogger{}).(*SLogger); ok {
+        return l
     }
-    return slog.Default()  // Fallback
+    traceID, ok := ctx.Value(XB3TraceID).(string)
+    if ok {
+        return &SLogger{
+            Logger: slog.Default().With(StringAttr(XB3TraceID, traceID)),
+        }
+    }
+    return &SLogger{
+        Logger: slog.Default(),
+    }
 }
 ```
 
@@ -314,27 +306,104 @@ func FuzzGraylogURL(f *testing.F) {
 - `examples/chi-middleware/main.go`
 - `examples/graylog-setup/main.go`
 
+## New Changes Since Review (April 2026)
+
+The following improvements were made after the initial review and should be documented:
+
+### 1. **Trace ID Support** (Added)
+**Files:** `context.go`, `http/gin/gin.go`, `http/chi/chi.go`, `http/mux/mux.go`, `grpc/grpc.go`
+
+**Description:** Added distributed tracing with B3 trace ID (`XB3TraceID`) across HTTP and gRPC middleware.
+
+**Implementation:**
+- `GenerateTraceID()` — generates UUID for tracing
+- `Context()` — creates new context with trace ID and logger
+- Middleware for Gin, Chi, standard `net/http`, and gRPC
+
+**Example:**
+```go
+ctx := slogging.Context()
+logger := slogging.L(ctx)
+logger.Info("request started", slogging.StringAttr("path", "/api/users"))
+```
+
+### 2. **Request/Response Attributes** (Added)
+**File:** `alias.go`
+
+**Description:** Added helper functions for logging HTTP requests/responses with automatic masking of Authorization headers.
+
+**Features:**
+- `RequestAttr(r *http.Request)` — extracts method, URL, headers (masked auth), body
+- `ResponseAttr(r *http.Response, start time.Time)` — extracts status, headers, body, duration
+- `checkHeaderAuth()` / `maskToken()` — masks tokens (keeps first 2 + last 2 chars)
+
+**Example:**
+```go
+logger.Info("request", slogging.RequestAttr(req)...)
+logger.Info("response", slogging.ResponseAttr(resp, startTime)...)
+```
+
+### 3. **Middleware Implementations** (Added)
+**Files:** `http/gin/gin.go`, `http/chi/chi.go`, `http/mux/mux.go`, `grpc/grpc.go`
+
+**Description:** Added ready-to-use middleware for popular frameworks.
+
+**Supported:**
+- Gin: `gin.LoggerWithConfig()`
+- Chi: `chi.Middleware()`
+- Standard `net/http`: `mux.Middleware()`
+- gRPC: `grpc.UnaryServerInterceptor()`
+
+### 4. **Type-Safe Attribute Helpers** (Added)
+**File:** `alias.go`
+
+**Description:** Added generic type-safe attribute creators:
+- `IntAttr[T constraints.Integer]` — type-safe integer attributes
+- `FloatAttr[T constraints.Float]` — type-safe float attributes
+- `TimeAttr` — formatted time (2006-01-02 15:04:05)
+- `ErrAttr` — error as string attribute
+
+### 5. **Security Improvements** (Added)
+**File:** `alias.go`
+
+**Description:** Authorization header masking in `RequestAttr()`:
+- Detects Bearer, Basic, and other auth schemes
+- Masks tokens: `abc...xyz` → `ab***yz`
+- Prevents credential leakage in logs
+
 ---
 
 ## Summary
 
-| Category | Count | Priority |
-|----------|-------|----------|
-| Critical | 3 | 🔴 High |
-| Performance | 4 | 🟡 Medium |
-| Style | 4 | 🟢 Low |
-| Features | 6 | 🟡 Medium |
-| Testing | 5 | 🟡 Medium |
+| Category | Count | Priority | Status |
+|----------|-------|----------|--------|
+| Critical | 3 | 🔴 High | ✅ **All Fixed** |
+| Performance | 4 | 🟡 Medium | 🟡 Open |
+| Style | 4 | 🟢 Low | 🟢 Open |
+| Features | 6 | 🟡 Medium | 🟡 Open |
+| Testing | 5 | 🟡 Medium | 🟡 Open |
+| **New Features** | 5 | 🟢 Added | ✅ **Implemented** |
+| **Security** | 1 | 🟢 Added | ✅ **Implemented** |
 
-**Immediate Actions:**
-1. ✅ Fix `InGraylog` panic (already done)
-2. Add nil checks for `inGraylog` writer
-3. Add context fallback in `L()`
-4. Add `-race` to CI
-5. Add integration tests with Docker Compose
+### Completed (April 2026)
+1. ✅ **InGraylog panic fix** — graceful degradation instead of crash
+2. ✅ **Nil checks** — empty URL validation added
+3. ✅ **Context fallback** — `L()` returns default logger if unavailable
+4. ✅ **Trace ID support** — distributed tracing with B3 standard
+5. ✅ **Request/Response helpers** — auto-extraction with auth masking
+6. ✅ **Middleware** — Gin, Chi, mux, gRPC implementations
+7. ✅ **Security** — Authorization header masking in logs
 
-**Nice to Have:**
-- Async logging mode
-- TLS support for Graylog
-- Fuzz testing
-- Examples directory
+### Remaining Actions
+1. 🟡 Add `-race` to CI
+2. 🟡 Add integration tests with Docker Compose
+3. 🟡 Add async logging mode (optional)
+4. 🟡 Add TLS support for Graylog (optional)
+5. 🟢 Add fuzz testing (optional)
+6. 🟢 Add examples directory (optional)
+
+---
+
+**Last Updated:** April 23, 2026  
+**Version:** v0.2 (post-fix)  
+**Status:** Production-ready for basic logging, Graylog support stable, tracing implemented
