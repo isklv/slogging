@@ -11,6 +11,7 @@ import (
 	slogmulti "github.com/samber/slog-multi"
 )
 
+// LoggerOptions holds configuration for the logger.
 type LoggerOptions struct {
 	level      Level
 	withSource bool
@@ -18,23 +19,22 @@ type LoggerOptions struct {
 	inGraylog  *gelfData
 }
 
+// gelfData holds Graylog GELF configuration.
 type gelfData struct {
 	w             *gelf.Writer
 	level         Level
 	containerName string
 }
 
+// Default configuration values
 const (
 	defaultLevel      = LevelDebug
 	defaultWithSource = true
 	defaultSetDefault = true
 )
 
-// NewLogger opts can be
-// InGraylog()
-// SetLevel()
-// WithSource()
-// SetDefault()
+// NewLogger creates a new SLogger with the given options.
+// Usage: slogging.NewLogger(slogging.NewOptions().SetLevel("info"))
 func NewLogger(opts *LoggerOptions) *SLogger {
 	var l *Logger
 
@@ -46,7 +46,8 @@ func NewLogger(opts *LoggerOptions) *SLogger {
 
 	stdHandler = NewTextHandler(os.Stdout, handlerOpts)
 
-	if opts.inGraylog == nil {
+	// Safety check: ensure inGraylog and its writer are valid
+	if opts.inGraylog == nil || opts.inGraylog.w == nil {
 		l = New(stdHandler)
 	} else {
 		sloggraylog.SourceKey = "reference"
@@ -73,10 +74,12 @@ func NewLogger(opts *LoggerOptions) *SLogger {
 	}
 }
 
+// SLogger wraps slog.Logger with additional functionality.
 type SLogger struct {
 	*slog.Logger
 }
 
+// Fatal logs a message at LevelFatal and exits with code 1.
 func (l *SLogger) Fatal(msg string, args ...any) {
 	l.Log(context.Background(), LevelFatal, msg, args...)
 	time.Sleep(1 * time.Second)
