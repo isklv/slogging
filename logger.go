@@ -85,3 +85,9 @@ func (l *SLogger) Fatal(msg string, args ...any) {
 	time.Sleep(1 * time.Second)
 	os.Exit(1)
 }
+
+// Panic logs a message at LevelFatal and panics.
+func (l *SLogger) Panic(msg string, args ...any) {
+	l.Log(context.Background(), LevelFatal, msg, args...)
+	panic(msg)
+}

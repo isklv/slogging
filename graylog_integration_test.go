@@ -51,7 +51,7 @@ func TestGraylogIntegration_WithTraceID(t *testing.T) {
 	sl := NewLogger(opts)
 
 	// Create context with trace ID
-	traceID := GenerateTestTraceID()
+	traceID := GenerateTraceID()
 	l := sl.Logger.With(StringAttr(XB3TraceID, traceID))
 	testLogger := &SLogger{Logger: l}
 	ctx := ContextWithLogger(context.Background(), testLogger)
@@ -123,9 +123,6 @@ func TestGraylogIntegration_ContextPropagation(t *testing.T) {
 
 	gelfWriter := helper.GELFWriter()
 	defer gelfWriter.Close()
-
-	opts := NewOptions().InGraylog("localhost:12201", "test-container")
-	sl := NewLogger(opts)
 
 	// Create parent context
 	parentCtx := Context()

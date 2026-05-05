@@ -1,6 +1,7 @@
 package slogging
 
 import (
+	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -21,22 +22,22 @@ func TestNewOptions(t *testing.T) {
 func TestOptions_SetLevel(t *testing.T) {
 	t.Run("sets debug level", func(t *testing.T) {
 		opts := NewOptions().SetLevel("debug")
-		assert.Equal(t, "debug", opts.level.String())
+		assert.Equal(t, slog.LevelDebug, opts.level)
 	})
 
 	t.Run("sets info level", func(t *testing.T) {
 		opts := NewOptions().SetLevel("info")
-		assert.Equal(t, "info", opts.level.String())
+		assert.Equal(t, slog.LevelInfo, opts.level)
 	})
 
 	t.Run("sets warn level", func(t *testing.T) {
 		opts := NewOptions().SetLevel("warn")
-		assert.Equal(t, "warn", opts.level.String())
+		assert.Equal(t, slog.LevelWarn, opts.level)
 	})
 
 	t.Run("sets error level", func(t *testing.T) {
 		opts := NewOptions().SetLevel("error")
-		assert.Equal(t, "error", opts.level.String())
+		assert.Equal(t, slog.LevelError, opts.level)
 	})
 }
 
@@ -94,7 +95,7 @@ func TestOptions_InGraylog(t *testing.T) {
 			WithSource(true).
 			SetDefault(true)
 
-		assert.Equal(t, "debug", opts.level.String())
+		assert.Equal(t, slog.LevelDebug, opts.level)
 		assert.True(t, opts.withSource)
 		assert.True(t, opts.setDefault)
 	})
@@ -108,7 +109,7 @@ func TestOptions_Chaining(t *testing.T) {
 			InGraylog("", "app").
 			SetDefault(true)
 
-		assert.Equal(t, "debug", opts.level.String())
+		assert.Equal(t, slog.LevelDebug, opts.level)
 		assert.True(t, opts.withSource)
 		assert.True(t, opts.setDefault)
 	})

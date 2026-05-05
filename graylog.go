@@ -8,6 +8,7 @@ import (
 
 	"github.com/Graylog2/go-gelf/gelf"
 	slogcommon "github.com/samber/slog-common"
+	sloggraylog "github.com/samber/slog-graylog/v2"
 )
 
 // Converter converts slog record to Graylog extra fields.
@@ -43,6 +44,10 @@ func (o Option) NewGraylogHandler() slog.Handler {
 
 	if o.AttrFromContext == nil {
 		o.AttrFromContext = []func(ctx context.Context) []slog.Attr{}
+	}
+
+	if o.Converter == nil {
+		o.Converter = sloggraylog.DefaultConverter
 	}
 
 	if hostname, err := os.Hostname(); err == nil {
@@ -83,9 +88,11 @@ func (h *GraylogHandler) Handle(ctx context.Context, record slog.Record) error {
 		Extra:    extra,
 	}
 
-	// non-blocking with nil check
+	// non-blocking with nil check and error ignoring
 	if h.option.Writer != nil {
 		go func() {
+			// Ignore errors - UDP may fail if Graylog is down,
+			// but we don't want to crash the app
 			_ = h.option.Writer.WriteMessage(msg)
 		}()
 	}

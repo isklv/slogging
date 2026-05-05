@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGraylogHandler(t *testing.T) {
+func TestGraylogHandlerIntegration(t *testing.T) {
 	t.Run("creates handler with empty URL gracefully", func(t *testing.T) {
 		// Test that we can create handler even if graylog is not configured
 		opts := NewOptions().InGraylog("", "test-app")
@@ -61,8 +61,8 @@ func TestInGraylog_ErrorHandling(t *testing.T) {
 	})
 }
 
-func TestGraylogIntegration(t *testing.T) {
-	t.Run("integration with logger", func(t *testing.T) {
+func TestGraylogIntegration_EmptyURL(t *testing.T) {
+	t.Run("integration with logger and empty URL", func(t *testing.T) {
 		// Test full flow with empty URL (graceful degradation)
 		opts := NewOptions().
 			InGraylog("", "integration-test").

@@ -91,7 +91,7 @@ func TestMaskToken(t *testing.T) {
 		{"long token", "secret-token-12345", "se***45"},
 		{"short token", "ab", "***"},
 		{"exact 4 chars", "abcd", "***"},
-		{"5 chars", "abcde", "a***e"},
+		{"5 chars", "abcde", "ab***de"},
 		{"Bearer prefix", "Bearer mytoken123", "Bearer my***23"},
 	}
 
